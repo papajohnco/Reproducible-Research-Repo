@@ -1,0 +1,181 @@
+---
+title: "Reproducible Research Project 1"
+author: "Papajohnco"
+date: "12/12/2021-12/28/2021"
+output: html_document
+---
+
+## Load dplyr, ggplot2, and knitr packages then call the libraries to this session
+```{r}
+library(knitr)
+library(dplyr)
+library(ggplot2)
+library(lattice)
+```
+
+## Global enable to alway show code chunks in output
+
+```{r}
+opts_chunk$set(echo = TRUE)
+```
+
+## Set working directory
+```{r}
+setwd("C:/Users/jcomaiii/Desktop/Coursera Reproducible Research/Reproducible-Research-Repo")
+```
+
+## Read the data into Rstudio using the read.csv function and assign a object name "data_rows"
+
+```{r}
+data_rows <- read.csv("activity.csv")
+```
+## Remove NA from data and assign a object name "data" *could also use na.rm = TRUE
+
+```{r}
+data <- data_rows [ with (data_rows, { !(is.na(steps)) } ), ]
+```
+
+## View first 30 rows without "NA" to ensure that NA is removed
+
+```{r}
+head(data, 30)
+```
+
+## Adding total steps each day by date using aggregate function
+
+```{r}
+aggregate(x = data$steps, by = list(data$date), FUN = sum)
+```
+
+## could also calculate total number of steps taken per day as follows
+
+```{r}
+by_day <- group_by(data, date)
+steps_by_day <- summarise(by_day, total = sum(steps))
+steps_by_day
+```
+
+## Assign total number of steps taken each day to variable x
+
+```{r}
+x <- aggregate(x = data$steps, by = list(data$date), FUN = sum)
+```
+
+## Histogram of the total number of steps taken each day
+
+```{r}
+hist(steps_by_day$total, main="Histogram of total number of steps taken each day", 
+     xlab="Total number of steps taken each day")
+```
+
+## Calculate and report the mean and median of the total number of steps taken per day using summary feature
+
+```{r}
+summary(steps_by_day)
+```
+## Preprocessing data for time series plot (i.e. type = “l”) 
+
+```{r}
+steps_by_interval <- aggregate(steps ~ interval, data, mean)
+```
+
+## Create the time series plot
+
+```{r}
+plot(steps_by_interval$interval, steps_by_interval$steps, type='l', 
+     main="Average number of steps over all days", 
+     xlab="Interval", 
+     ylab="Average number of steps")
+```
+## Process the data to determine which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+```{r}
+max_steps_row <- which.max(steps_by_interval$steps)
+```
+
+## Calculate the interval that has the average max steps row value
+
+```{r}
+steps_by_interval[max_steps_row, ]
+```
+## Therefore the interval that contains the max number of steps is 835, which has average max of just over 206 steps
+
+## Imputing missing values. ie. Calculate and report the total number of missing values in the dataset 
+
+```{r}
+sum(is.na(data_rows))
+```
+## The total number of rows with NA is 2304
+
+## Strategy to add in all the missing rows into the dataset using mean/median for the day. 
+
+```{r}
+missingIndex<-is.na(data_rows[,1])
+```
+
+
+```{r}
+m<-mean(steps_by_interval$steps)
+```
+
+## Create a new dataset with the missing (imputed) data filled in.
+
+```{r}
+activity1<-data_rows
+activity1[missingIndex,1]<-m
+head(activity1)
+```
+
+## Histogram of the total number of steps taken each day after imputed data is included
+
+```{r}
+totalStepsByDay1<-aggregate(steps~date, activity1, sum)
+hist(totalStepsByDay1$steps, xlab="Total Number of Steps per day", ylab="Number of Days", main="Number of Steps taken each day after imputed data is included")
+```
+
+
+```{r}
+total_Steps_By_Day1<-aggregate(steps~date, activity1, sum)
+```
+
+## Mean after imputed steps added
+
+```{r}
+mean_after_imputed_steps<-mean(total_Steps_By_Day1$steps)
+mean_after_imputed_steps
+```
+
+## Median after imputed steps added
+
+```{r}
+median_after_imputed_steps<-median(total_Steps_By_Day1$steps)
+median_after_imputed_steps
+```
+## Using the new dataset with imputed data "activity1", create new variables "weekday" and "weekend"
+## If day is Saturday or Sunday then it's weekend, else it's a weekday
+## Create these variables in "activity2"
+
+```{r}
+activity1$date<-as.Date(activity1$date)
+activity2<-activity1%>%
+  mutate(daytype= ifelse(weekdays(activity1$date)=="Saturday"|weekdays(activity1$date)=="Sunday", "Weekend", "Weekday"))
+head(activity2, 10)
+```
+
+## Now create a panel plot comparing the average number of steps taken per 5 minute interval across weekends & weekdays
+
+```{r}
+averageStepByDayTypeAndInterval<-activity2%>%
+  group_by(daytype, interval)%>%
+  summarize(averageStepByDay=sum(steps))
+```
+
+
+```{r}
+with(averageStepByDayTypeAndInterval, 
+      xyplot(averageStepByDay ~ interval | daytype, 
+      type = "l",      
+      main = "Average Number of Steps across Weekdays & Weekends",
+      xlab = "Daily Intervals",
+      ylab = "Average Number of Steps"))
+```
